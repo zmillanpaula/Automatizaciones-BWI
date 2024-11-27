@@ -1,6 +1,7 @@
 import { Builder, By, until } from "selenium-webdriver";
 
 export default async function handler(req, res) {
+  console.log("Método recibido:", req.method);
   // Aceptar solo solicitudes POST
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Método no permitido" });
@@ -37,12 +38,12 @@ export default async function handler(req, res) {
     await loginButton.click(); // Hacer clic en el botón de inicio de sesión
 
     // Esperar hasta que la URL cambie indicando un inicio exitoso
-    await driver.wait(until.urlContains("dashboard"), 5000); // Cambia 'dashboard' por la URL esperada
-
+    await driver.wait(until.urlContains("my"), 15000); // Esperar hasta 15 segundos si es necesario
     res.status(200).json({ message: "Inicio de sesión exitoso" });
   } catch (error) {
-    console.error("Error en Selenium:", error);
-    res.status(500).json({ error: "Error en el inicio de sesión" });
+    console.error("Error esperando la URL:", error);
+    const currentUrl = await driver.getCurrentUrl(); // Capturar la URL actual para diagnóstico
+    res.status(500).json({ error: "Error en el inicio de sesión", currentUrl });
   } finally {
     if (driver) {
       await driver.quit(); // Cerrar el navegador
