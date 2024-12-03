@@ -5,4 +5,17 @@ services:
     container_name: selenium
     ports:
       - "4444:4444"
-    shm_size: "2g"
+      - "7900:7900"
+    shm_size: "2g"services:
+  backend:
+    build: ./backend
+    networks:
+      - fullstack_network
+
+  frontend:
+    build: ./frontend
+    networks:
+      - fullstack_network
+
+networks:
+  fullstack_network:

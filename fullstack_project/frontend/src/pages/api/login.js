@@ -1,52 +1,55 @@
-import { Builder, By, until } from "selenium-webdriver";
+import { exec } from "child_process";
+import path from "path";
 
-export default async function handler(req, res) {
-  console.log("Método recibido:", req.method);
-  // Aceptar solo solicitudes POST
+const validUsers = [
+  { username: "16244610k", password: "EnterTheMatrix_V7" },
+  { username: "user1@example.com", password: "mypassword456" },
+];
+
+export default function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Método no permitido" });
+    return res.status(405).json({ error: "Método no permitido. Usa POST." });
   }
 
-  // Extraer los datos del cuerpo de la solicitud
   const { username, password } = req.body;
 
   if (!username || !password) {
     return res
       .status(400)
-      .json({ error: "Faltan parámetros: username y password" });
+      .json({ error: "Usuario y contraseña son obligatorios." });
   }
 
-  let driver;
+  // Validar si las credenciales están en la lista
+  const isValid = validUsers.some(
+    (user) => user.username === username && user.password === password
+  );
 
-  try {
-    // Conectar a Selenium en Docker
-    driver = await new Builder()
-      .usingServer("http://localhost:4444/wd/hub") // URL del servidor Selenium
-      .forBrowser("chrome") // Usar Chrome
-      .build();
+  if (!isValid) {
+    return res.status(401).json({ error: "Credenciales inválidas." });
+  }
 
-    // Navegar a la página de inicio de sesión
-    await driver.get("https://campusvirtual.bestwork.cl/login/");
+  // Ruta al script Python
+  const scriptPath =
+    "/Users/paula/backend_bwi/fullstack_project/backend/scripts/login.py";
 
-    // Completar el formulario de inicio de sesión
-    const usernameField = await driver.findElement(By.id("username"));
-    const passwordField = await driver.findElement(By.id("password"));
-    const loginButton = await driver.findElement(By.id("loginbtn"));
-
-    await usernameField.sendKeys(username); // Ingresar el nombre de usuario
-    await passwordField.sendKeys(password); // Ingresar la contraseña
-    await loginButton.click(); // Hacer clic en el botón de inicio de sesión
-
-    // Esperar hasta que la URL cambie indicando un inicio exitoso
-    await driver.wait(until.urlContains("my"), 15000); // Esperar hasta 15 segundos si es necesario
-    res.status(200).json({ message: "Inicio de sesión exitoso" });
-  } catch (error) {
-    console.error("Error esperando la URL:", error);
-    const currentUrl = await driver.getCurrentUrl(); // Capturar la URL actual para diagnóstico
-    res.status(500).json({ error: "Error en el inicio de sesión", currentUrl });
-  } finally {
-    if (driver) {
-      await driver.quit(); // Cerrar el navegador
+  const comando = `python3 ${scriptPath} ${username} ${password}`;
+  exec(comando, (error, stdout, stderr) => {
+    if (error) {
+      console.error(
+        `Error ejecutando el script de inicio de sesión: ${error.message}`
+      );
+      return res
+        .status(500)
+        .json({ error: "Error en el proceso de inicio de sesión." });
     }
-  }
+
+    if (stderr) {
+      console.error(`Error en el script: ${stderr}`);
+      return res.status(500).json({ error: stderr });
+    }
+
+    res
+      .status(200)
+      .json({ message: "Inicio de sesión exitoso.", output: stdout });
+  });
 }
