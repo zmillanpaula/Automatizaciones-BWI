@@ -1,12 +1,4 @@
-import { exec } from "child_process";
-import path from "path";
-
-const validUsers = [
-  { username: "16244610k", password: "EnterTheMatrix_V7" },
-  { username: "user1@example.com", password: "mypassword456" },
-];
-
-export default function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Método no permitido. Usa POST." });
   }
@@ -19,7 +11,12 @@ export default function handler(req, res) {
       .json({ error: "Usuario y contraseña son obligatorios." });
   }
 
-  // Validar si las credenciales están en la lista
+  // Validar credenciales contra la lista de usuarios válidos
+  const validUsers = [
+    { username: "16244610k", password: "EnterTheMatrix_V7" },
+    { username: "user1@example.com", password: "mypassword456" },
+  ];
+
   const isValid = validUsers.some(
     (user) => user.username === username && user.password === password
   );
@@ -28,28 +25,23 @@ export default function handler(req, res) {
     return res.status(401).json({ error: "Credenciales inválidas." });
   }
 
-  // Ruta al script Python
-  const scriptPath =
-    "/Users/paula/backend_bwi/fullstack_project/backend/scripts/login.py";
+  try {
+    // Enviar solicitud al contenedor de Selenium Python
+    const response = await fetch("http://selenium-python:5000/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
 
-  const comando = `python3 ${scriptPath} ${username} ${password}`;
-  exec(comando, (error, stdout, stderr) => {
-    if (error) {
-      console.error(
-        `Error ejecutando el script de inicio de sesión: ${error.message}`
-      );
-      return res
-        .status(500)
-        .json({ error: "Error en el proceso de inicio de sesión." });
+    const data = await response.json();
+
+    if (response.ok) {
+      return res.status(200).json(data); // Respuesta del contenedor
+    } else {
+      return res.status(response.status).json(data); // Error devuelto por el contenedor
     }
-
-    if (stderr) {
-      console.error(`Error en el script: ${stderr}`);
-      return res.status(500).json({ error: stderr });
-    }
-
-    res
-      .status(200)
-      .json({ message: "Inicio de sesión exitoso.", output: stdout });
-  });
+  } catch (error) {
+    console.error("Error conectando al servicio selenium-python:", error);
+    return res.status(500).json({ error: "Error conectando al contenedor." });
+  }
 }

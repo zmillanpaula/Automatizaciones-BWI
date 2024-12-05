@@ -9,8 +9,8 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 
-# Expone el puerto 3000
-EXPOSE 3000
+# Expone el puerto 5000
+EXPOSE 5000
 
 # Comando para iniciar el servidor
 CMD ["node", "server.js"]

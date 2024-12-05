@@ -4,7 +4,7 @@ require("selenium-webdriver/firefox");
 require("selenium-webdriver/chrome");
 
 const app = express();
-const PORT = 3000;
+const PORT = 5000;
 
 // Middleware para procesar JSON
 app.use(express.json());
@@ -17,12 +17,10 @@ app.post("/automatizar", async (req, res) => {
     return res.status(400).json({ success: false, error: "URL inválida" });
   }
   if (!browser || !["chrome", "firefox"].includes(browser)) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        error: 'Navegador no soportado. Usa "chrome" o "firefox".',
-      });
+    return res.status(400).json({
+      success: false,
+      error: 'Navegador no soportado. Usa "chrome" o "firefox".',
+    });
   }
 
   try {
