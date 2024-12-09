@@ -1,72 +1,84 @@
+import os
 from flask import Flask, request, jsonify
-import subprocess  # Para ejecutar los scripts Python como procesos separados
+import subprocess
+from flask_cors import CORS
 
 # Crear la aplicación Flask
 app = Flask(__name__)
+CORS(app)
 
-# Endpoint para el script de login
-@app.route('/login', methods=['POST'])
+# Configurar rutas de scripts y entorno virtual
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+VENV_PYTHON = "python3"
+LOGIN_SCRIPT_PATH = os.path.join(BASE_DIR, 'login.py')
+CREAR_USUARIO_SCRIPT_PATH = os.path.join(BASE_DIR, 'crear_usuario.py')
+
+@app.route('/login', methods=['POST'], strict_slashes=False)
 def login():
     try:
-        # Obtener los datos enviados desde el cliente (frontend/backend)
+        app.logger.info("Solicitud recibida en /login")
         data = request.json
+        if data is None:
+            return jsonify({"error": "El cuerpo de la solicitud está vacío o no es JSON válido"}), 400
+        
         username = data.get('username')
         password = data.get('password')
 
-        # Validar los datos recibidos
         if not username or not password:
             return jsonify({"error": "Usuario y contraseña son obligatorios"}), 400
 
-        # Ejecutar el script login.py con los argumentos
         result = subprocess.run(
-            ['python3', 'login.py', username, password],  # Llamada al script con argumentos
-            stdout=subprocess.PIPE,  # Captura la salida estándar
-            stderr=subprocess.PIPE,  # Captura la salida de errores
-            text=True  # Devuelve las salidas como cadenas de texto
+            [VENV_PYTHON, LOGIN_SCRIPT_PATH, username, password],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
         )
 
-        # Validar si el script se ejecutó correctamente
         if result.returncode != 0:
-            return jsonify({"error": result.stderr}), 500  # Enviar los errores al cliente
+            app.logger.error(f"Error ejecutando login.py: {result.stderr.strip()}")
+            return jsonify({"error": result.stderr.strip()}), 500
 
-        # Devolver la salida estándar del script al cliente
-        return jsonify({"message": "Inicio de sesión ejecutado.", "output": result.stdout})
+        return jsonify({"message": "Inicio de sesión ejecutado.", "output": result.stdout.strip()})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500  # Manejo de errores inesperados
+        app.logger.error(f"Error en /login: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
-# Endpoint para el script de creación de usuario
 @app.route('/crear_usuario', methods=['POST'])
 def crear_usuario():
     try:
-        # Obtener los datos enviados desde el cliente
+        app.logger.info("Solicitud recibida en /crear_usuario")
         data = request.json
+        if data is None:
+            return jsonify({"error": "El cuerpo de la solicitud está vacío o no es JSON válido"}), 400
+
         nombre = data.get('nombre')
         apellido = data.get('apellido')
         correo = data.get('correo')
         telefono = data.get('telefono')
         rut = data.get('rut')
 
-        # Validar los datos recibidos
         if not all([nombre, apellido, correo, telefono, rut]):
             return jsonify({"error": "Todos los campos son obligatorios"}), 400
 
-        # Ejecutar el script crear_usuario.py con los argumentos
         result = subprocess.run(
-            ['python3', 'crear_usuario.py', nombre, apellido, correo, telefono, rut],
+            [VENV_PYTHON, CREAR_USUARIO_SCRIPT_PATH, nombre, apellido, correo, telefono, rut],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True
         )
 
-        # Validar si el script se ejecutó correctamente
         if result.returncode != 0:
-            return jsonify({"error": result.stderr}), 500
+            app.logger.error(f"Error ejecutando crear_usuario.py: {result.stderr.strip()}")
+            return jsonify({"error": result.stderr.strip()}), 500
 
-        # Devolver la salida estándar del script al cliente
-        return jsonify({"message": "Usuario creado exitosamente.", "output": result.stdout})
+        return jsonify({"message": "Usuario creado exitosamente.", "output": result.stdout.strip()})
     except Exception as e:
+        app.logger.error(f"Error en /crear_usuario: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-# Iniciar el servidor Flask
+@app.route('/', methods=['GET'])
+def home():
+    return jsonify({"message": "¡Bienvenido al servidor Flask!"})
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)  # Escucha en todas las interfaces de red y puerto 5000
+    app.run(host='0.0.0.0', port=5000)

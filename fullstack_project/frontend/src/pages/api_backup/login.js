@@ -27,7 +27,9 @@ export default async function handler(req, res) {
 
   try {
     // Enviar solicitud al contenedor de Selenium Python
-    const response = await fetch("http://selenium-python:5000/login", {
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+    const response = await fetch(`${BACKEND_URL}/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),

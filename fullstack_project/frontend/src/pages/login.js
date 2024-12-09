@@ -4,12 +4,17 @@ import { useRouter } from "next/router";
 export default function Login() {
   const [formData, setFormData] = useState({ username: "", password: "" });
   const [responseMessage, setResponseMessage] = useState("");
+  const [loading, setLoading] = useState(false); // Estado para controlar el botón
   const router = useRouter();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("Datos enviados:", formData);
+    setLoading(true); // Inicia el estado de carga
+    setResponseMessage("Procesando tu solicitud, por favor espera...");
     try {
-      const res = await fetch("/api/login", {
+      const SELENIUM_URL = "http://localhost:5001";
+      const res = await fetch(`${SELENIUM_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -19,12 +24,15 @@ export default function Login() {
 
       if (res.ok) {
         localStorage.setItem("isAuthenticated", true); // Guarda el estado de autenticación
-        router.push("/dashboard"); // Redirige al dashboard
+        setResponseMessage("¡Inicio de sesión exitoso! Redirigiendo...");
+        setTimeout(() => router.push("/dashboard"), 2000); // Redirige al dashboard
       } else {
         setResponseMessage(`Error: ${data.error}`);
+        setLoading(false); // Finaliza la carga
       }
     } catch (err) {
       console.error("Error al enviar la solicitud:", err);
+      setResponseMessage("Error al conectar con el servidor.");
       setResponseMessage("Error al enviar la solicitud.");
     }
   };
@@ -59,9 +67,14 @@ export default function Login() {
           />
           <button
             type="submit"
-            className="w-full bg-blue-500 text-white font-bold py-3 rounded-md hover:bg-blue-600 transition"
+            className={`w-full py-3 rounded-md font-bold transition ${
+              loading
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-blue-500 hover:bg-blue-600 text-white"
+            }`}
+            disabled={loading}
           >
-            Iniciar Sesión
+            {loading ? "Cargando..." : "Iniciar Sesión"}
           </button>
         </form>
         {responseMessage && (

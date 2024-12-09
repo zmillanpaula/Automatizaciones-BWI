@@ -1,7 +1,7 @@
 # Usa una imagen ligera de Python
 FROM python:3.9-slim
 
-# Instala las dependencias necesarias
+# Instala las dependencias necesarias del sistema
 RUN apt-get update && apt-get install -y \
     wget \
     unzip \
@@ -21,14 +21,17 @@ RUN apt-get update && apt-get install -y \
     libxrender-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Instala dependencias de Python
-RUN pip install selenium flask
-
 # Establece el directorio de trabajo en el contenedor
 WORKDIR /app
 
-# Copia los scripts desde el directorio backend/scripts
-COPY . /app
+# Copia el archivo requirements.txt al contenedor
+COPY requirements.txt .
+
+# Instala las dependencias de Python listadas en requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copia el resto de los scripts desde backend/scripts
+COPY . .
 
 # Expone el puerto del servidor Flask
 EXPOSE 5000
