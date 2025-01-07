@@ -1,40 +1,36 @@
-# Usa una imagen ligera de Python
-FROM python:3.9-slim
-
-# Instala las dependencias necesarias del sistema
-RUN apt-get update && apt-get install -y \
-    wget \
-    unzip \
-    libnss3 \
-    libx11-xcb1 \
-    libxcomposite1 \
-    libxcursor1 \
-    libxdamage1 \
-    libxi6 \
-    libxtst6 \
-    libxrandr2 \
-    libasound2 \
-    libpangocairo-1.0-0 \
-    libgtk-3-0 \
-    libgbm-dev \
-    libxshmfence1 \
-    libxrender-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Usa una imagen base de Python
+FROM python:3.9
 
 # Establece el directorio de trabajo en el contenedor
 WORKDIR /app
 
-# Copia el archivo requirements.txt al contenedor
-COPY requirements.txt .
+# Copia el archivo requirements.txt desde la carpeta actual a /app/scripts en el contenedor
+COPY requirements.txt /app/scripts/requirements.txt
 
-# Instala las dependencias de Python listadas en requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Instala python3-venv para poder crear entornos virtuales
+RUN apt-get update && \
+    apt-get install -y python3-venv && \
+    apt-get clean
 
-# Copia el resto de los scripts desde backend/scripts
+# Crea un entorno virtual en /opt/venv
+RUN python3 -m venv /opt/venv
+
+# Activa el entorno virtual y actualiza pip
+RUN /opt/venv/bin/pip install --no-cache-dir --upgrade pip
+
+# Instala las dependencias dentro del entorno virtual
+RUN /opt/venv/bin/pip install --no-cache-dir -r /app/scripts/requirements.txt
+
+# Añade el entorno virtual al PATH
+ENV PATH="/opt/venv/bin:$PATH"
+
+ENV FLASK_ENV=development
+
+# Copia todo el código fuente al contenedor
 COPY . .
 
-# Expone el puerto del servidor Flask
-EXPOSE 5000
+# Expone el puerto donde corre Flask
+EXPOSE 5001
 
-# Comando para iniciar el servidor Flask
-CMD ["python", "server.py"]
+# Comando para ejecutar la aplicación
+CMD ["python3", "server.py"]

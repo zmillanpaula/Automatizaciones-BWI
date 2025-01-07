@@ -1,79 +1,57 @@
-import os
 from flask import Flask, request, jsonify
-import subprocess
 from flask_cors import CORS
+from selenium_manager import SeleniumManager
+from buscar_estudiante import login_y_buscar_estudiante
+from asignar_nivel import asignar_nivel_campus
+import logging
 
-# Crear la aplicación Flask
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Configurar rutas de scripts y entorno virtual
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-VENV_PYTHON = "python3"
-LOGIN_SCRIPT_PATH = os.path.join(BASE_DIR, 'login.py')
-CREAR_USUARIO_SCRIPT_PATH = os.path.join(BASE_DIR, 'crear_usuario.py')
+selenium_manager = SeleniumManager()  # Instancia global para manejar la sesión
 
-@app.route('/login', methods=['POST'], strict_slashes=False)
-def login():
+# Configuración de logs
+logging.basicConfig(level=logging.INFO)
+
+@app.route('/buscar_estudiante', methods=['POST'])
+def buscar_estudiante_endpoint():
     try:
-        app.logger.info("Solicitud recibida en /login")
         data = request.json
-        if data is None:
-            return jsonify({"error": "El cuerpo de la solicitud está vacío o no es JSON válido"}), 400
-        
-        username = data.get('username')
-        password = data.get('password')
+        username = data.get('admin_username')
+        password = data.get('admin_password')
+        correo = data.get('correo')
 
-        if not username or not password:
-            return jsonify({"error": "Usuario y contraseña son obligatorios"}), 400
+        if not all([username, password, correo]):
+            return jsonify({"error": "Faltan datos requeridos"}), 400
 
-        result = subprocess.run(
-            [VENV_PYTHON, LOGIN_SCRIPT_PATH, username, password],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
+        logging.info("Iniciando búsqueda de estudiante...")
+        resultado = selenium_manager.run(
+            lambda driver: login_y_buscar_estudiante(driver, username, password, correo)
         )
-
-        if result.returncode != 0:
-            app.logger.error(f"Error ejecutando login.py: {result.stderr.strip()}")
-            return jsonify({"error": result.stderr.strip()}), 500
-
-        return jsonify({"message": "Inicio de sesión ejecutado.", "output": result.stdout.strip()})
+        logging.info(f"Resultado de búsqueda: {resultado}")
+        return jsonify(resultado)
     except Exception as e:
-        app.logger.error(f"Error en /login: {str(e)}")
+        logging.error(f"Error en /buscar_estudiante: {e}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('/crear_usuario', methods=['POST'])
-def crear_usuario():
+@app.route('/asignar_nivel', methods=['POST'])
+def asignar_nivel_endpoint():
     try:
-        app.logger.info("Solicitud recibida en /crear_usuario")
         data = request.json
-        if data is None:
-            return jsonify({"error": "El cuerpo de la solicitud está vacío o no es JSON válido"}), 400
-
-        nombre = data.get('nombre')
-        apellido = data.get('apellido')
         correo = data.get('correo')
-        telefono = data.get('telefono')
-        rut = data.get('rut')
+        nivel = data.get('nivel')
 
-        if not all([nombre, apellido, correo, telefono, rut]):
-            return jsonify({"error": "Todos los campos son obligatorios"}), 400
+        if not all([correo, nivel]):
+            return jsonify({"error": "Faltan datos requeridos"}), 400
 
-        result = subprocess.run(
-            [VENV_PYTHON, CREAR_USUARIO_SCRIPT_PATH, nombre, apellido, correo, telefono, rut],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
+        logging.info("Iniciando asignación de nivel...")
+        resultado = selenium_manager.run(
+            lambda driver: asignar_nivel_campus(driver, correo, nivel)
         )
-
-        if result.returncode != 0:
-            app.logger.error(f"Error ejecutando crear_usuario.py: {result.stderr.strip()}")
-            return jsonify({"error": result.stderr.strip()}), 500
-
-        return jsonify({"message": "Usuario creado exitosamente.", "output": result.stdout.strip()})
+        logging.info(f"Resultado de asignación: {resultado}")
+        return jsonify(resultado)
     except Exception as e:
-        app.logger.error(f"Error en /crear_usuario: {str(e)}")
+        logging.error(f"Error en /asignar_nivel: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/', methods=['GET'])
@@ -81,4 +59,4 @@ def home():
     return jsonify({"message": "¡Bienvenido al servidor Flask!"})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5050)

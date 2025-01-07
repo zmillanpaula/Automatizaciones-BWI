@@ -9,13 +9,31 @@ services:
     networks:
       - fullstack_network
 
+  selenium-python:
+    build:
+      context: ./scripts # Ruta a la carpeta con tu Dockerfile-python y scripts
+      dockerfile: Dockerfile-python
+    container_name: selenium-python
+    ports:
+      - "4445:4444" # Selenium Grid
+      - "5001:5000" # Servidor Flask
+    shm_size: "2g"
+    volumes:
+      - ./scripts:/app
+    networks:
+      - fullstack_network
+    depends_on:
+      - selenium
+
   backend:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: backend
     ports:
-      - "5002:5000"
+      - "5050:5050"
+    volumes:
+      - .:/app
     networks:
       - fullstack_network
     depends_on:
@@ -29,24 +47,25 @@ services:
     container_name: frontend
     ports:
       - "3000:3000"
+    volumes:
+      - ../frontend:/app
+      - ../frontend/.env.local:/app/.env.local
     environment:
-      - NEXT_PUBLIC_BACKEND_URL=http://selenium-python:5000
+      - NEXT_PUBLIC_BACKEND_URL=http://backend:5050
     depends_on:
-      - selenium-python
+      - backend
     networks:
       - fullstack_network
 
-  selenium-python:
-    build:
-      context: ./scripts
-      dockerfile: Dockerfile-python
-    container_name: selenium-python
+  firefox:
+    image: jlesage/firefox
+    container_name: firefox
     ports:
-      - "5001:5000"
-    depends_on:
-      - selenium
+      - "5800:5800"
     networks:
       - fullstack_network
+    volumes:
+      - ~/docker/appdata/firefox:/config:rw
 
 networks:
   fullstack_network:

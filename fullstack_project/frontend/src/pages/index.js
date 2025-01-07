@@ -1,17 +1,9 @@
-import { useEffect } from "react";
-import { useRouter } from "next/router";
+// src/pages/index.js
+import React from "react";
+import Dashboard from "./dashboard";
 
-export default function Home() {
-  const router = useRouter();
+const Home = () => {
+  return <Dashboard />;
+};
 
-  useEffect(() => {
-    const isAuthenticated = localStorage.getItem("isAuthenticated");
-    if (isAuthenticated === "true") {
-      router.push("/dashboard"); // Redirige al dashboard si está autenticado
-    } else {
-      router.push("/login"); // Redirige al login si no está autenticado
-    }
-  }, []);
-
-  return null; // No renderiza contenido mientras redirige
-}
+export default Home;

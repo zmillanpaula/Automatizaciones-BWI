@@ -1,39 +1,39 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
+import axiosClient from "../../utils/axiosClient"; // Importa el cliente configurado
 
 export default function Login() {
   const [formData, setFormData] = useState({ username: "", password: "" });
   const [responseMessage, setResponseMessage] = useState("");
-  const [loading, setLoading] = useState(false); // Estado para controlar el botón
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Datos enviados:", formData);
-    setLoading(true); // Inicia el estado de carga
+    setLoading(true);
     setResponseMessage("Procesando tu solicitud, por favor espera...");
+
     try {
-      const SELENIUM_URL = "http://localhost:5001";
-      const res = await fetch(`${SELENIUM_URL}/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+      // Enviar solicitud usando axiosClient
+      const res = await axiosClient.post("/login", formData);
+      const { token } = res.data; // Extrae el token de la respuesta
 
-      const data = await res.json();
+      // Guarda el token y la autenticación en el almacenamiento local
+      localStorage.setItem("token", token);
+      localStorage.setItem("isAuthenticated", true);
 
-      if (res.ok) {
-        localStorage.setItem("isAuthenticated", true); // Guarda el estado de autenticación
-        setResponseMessage("¡Inicio de sesión exitoso! Redirigiendo...");
-        setTimeout(() => router.push("/dashboard"), 2000); // Redirige al dashboard
-      } else {
-        setResponseMessage(`Error: ${data.error}`);
-        setLoading(false); // Finaliza la carga
-      }
+      setResponseMessage("¡Inicio de sesión exitoso! Redirigiendo...");
+      setTimeout(() => router.push("/dashboard"), 2000); // Redirige al dashboard
     } catch (err) {
       console.error("Error al enviar la solicitud:", err);
-      setResponseMessage("Error al conectar con el servidor.");
-      setResponseMessage("Error al enviar la solicitud.");
+      // Muestra el mensaje de error devuelto por el servidor o uno predeterminado
+      setResponseMessage(
+        `Error: ${
+          err.response?.data?.error ||
+          "Credenciales inválidas o error del servidor."
+        }`
+      );
+      setLoading(false);
     }
   };
 
